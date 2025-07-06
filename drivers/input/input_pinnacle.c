@@ -18,6 +18,16 @@
 
 LOG_MODULE_REGISTER(pinnacle, CONFIG_INPUT_LOG_LEVEL);
 
+static inline int16_t scale_coordinate_x(const struct pinnacle_config *config, int16_t x) {
+    return ((x - config->absolute_mode_clamp_min_x) * config->absolute_mode_scale_to_width) /
+           (config->absolute_mode_clamp_max_x - config->absolute_mode_clamp_min_x);
+}
+
+static inline int16_t scale_coordinate_y(const struct pinnacle_config *config, int16_t y) {
+    return ((y - config->absolute_mode_clamp_min_y) * config->absolute_mode_scale_to_height) /
+           (config->absolute_mode_clamp_max_y - config->absolute_mode_clamp_min_y);
+}
+
 static int pinnacle_seq_read(const struct device *dev, const uint8_t addr, uint8_t *buf,
                              const uint8_t len) {
     const struct pinnacle_config *config = dev->config;
@@ -262,10 +272,8 @@ static bool pinnacle_handle_rounding_scroll(const struct device *dev, int16_t cl
 
     int16_t dx = clamped_x - central_x;
     int16_t dy = clamped_y - central_y;
-    dx = ((dx - config->absolute_mode_clamp_min_x) * config->absolute_mode_scale_to_width) /
-         (config->absolute_mode_clamp_max_x - config->absolute_mode_clamp_min_x);
-    dy = ((dy - config->absolute_mode_clamp_min_y) * config->absolute_mode_scale_to_height) /
-         (config->absolute_mode_clamp_max_y - config->absolute_mode_clamp_min_y);
+    dx = scale_coordinate_x(config, dx);
+    dy = scale_coordinate_y(config, dy);
 
     if (!data->in_rounding_scroll && z > 0) {
         uint16_t left_x = central_x - config->rounding_scroll_top_width / 2;
@@ -384,10 +392,8 @@ static void pinnacle_report_data_abs(const struct device *dev) {
     if (z > 0 && !rounding_scroll_handled) {
 
         // scale to be in the configured interval
-        x = ((x - config->absolute_mode_clamp_min_x) * config->absolute_mode_scale_to_width) /
-            (config->absolute_mode_clamp_max_x - config->absolute_mode_clamp_min_x);
-        y = ((y - config->absolute_mode_clamp_min_y) * config->absolute_mode_scale_to_height) /
-            (config->absolute_mode_clamp_max_y - config->absolute_mode_clamp_min_y);
+        x = scale_coordinate_x(config, x);
+        y = scale_coordinate_y(config, y);
         int16_t dx = x - data->absolute_mode_last_x;
         int16_t dy = y - data->absolute_mode_last_y;
 
@@ -768,24 +774,24 @@ static int pinnacle_pm_action(const struct device *dev, enum pm_device_action ac
         .no_taps = DT_INST_PROP(n, no_taps),                                                       \
         .no_secondary_tap = DT_INST_PROP(n, no_secondary_tap),                                     \
         .absolute_mode = DT_INST_PROP(n, absolute_mode),                                           \
-        .absolute_mode_scale_to_width = COND_CODE_1(DT_INST_PROP(n, rotate_90),                   \
-                                                   (DT_INST_PROP(n, absolute_mode_scale_to_height)), \
-                                                   (DT_INST_PROP(n, absolute_mode_scale_to_width))), \
-        .absolute_mode_scale_to_height = COND_CODE_1(DT_INST_PROP(n, rotate_90),                  \
-                                                    (DT_INST_PROP(n, absolute_mode_scale_to_width)), \
-                                                    (DT_INST_PROP(n, absolute_mode_scale_to_height))), \
-        .absolute_mode_clamp_min_x = COND_CODE_1(DT_INST_PROP(n, rotate_90),                      \
-                                                (DT_INST_PROP(n, absolute_mode_clamp_min_y)),       \
-                                                (DT_INST_PROP(n, absolute_mode_clamp_min_x))),      \
-        .absolute_mode_clamp_max_x = COND_CODE_1(DT_INST_PROP(n, rotate_90),                      \
-                                                (DT_INST_PROP(n, absolute_mode_clamp_max_y)),       \
-                                                (DT_INST_PROP(n, absolute_mode_clamp_max_x))),      \
-        .absolute_mode_clamp_min_y = COND_CODE_1(DT_INST_PROP(n, rotate_90),                      \
-                                                (DT_INST_PROP(n, absolute_mode_clamp_min_x)),       \
-                                                (DT_INST_PROP(n, absolute_mode_clamp_min_y))),      \
-        .absolute_mode_clamp_max_y = COND_CODE_1(DT_INST_PROP(n, rotate_90),                      \
-                                                (DT_INST_PROP(n, absolute_mode_clamp_max_x)),       \
-                                                (DT_INST_PROP(n, absolute_mode_clamp_max_y))),      \
+        .absolute_mode_scale_to_width = COND_CODE_1(                                               \
+            DT_INST_PROP(n, rotate_90), (DT_INST_PROP(n, absolute_mode_scale_to_height)),          \
+            (DT_INST_PROP(n, absolute_mode_scale_to_width))),                                      \
+        .absolute_mode_scale_to_height = COND_CODE_1(                                              \
+            DT_INST_PROP(n, rotate_90), (DT_INST_PROP(n, absolute_mode_scale_to_width)),           \
+            (DT_INST_PROP(n, absolute_mode_scale_to_height))),                                     \
+        .absolute_mode_clamp_min_x =                                                               \
+            COND_CODE_1(DT_INST_PROP(n, rotate_90), (DT_INST_PROP(n, absolute_mode_clamp_min_y)),  \
+                        (DT_INST_PROP(n, absolute_mode_clamp_min_x))),                             \
+        .absolute_mode_clamp_max_x =                                                               \
+            COND_CODE_1(DT_INST_PROP(n, rotate_90), (DT_INST_PROP(n, absolute_mode_clamp_max_y)),  \
+                        (DT_INST_PROP(n, absolute_mode_clamp_max_x))),                             \
+        .absolute_mode_clamp_min_y =                                                               \
+            COND_CODE_1(DT_INST_PROP(n, rotate_90), (DT_INST_PROP(n, absolute_mode_clamp_min_x)),  \
+                        (DT_INST_PROP(n, absolute_mode_clamp_min_y))),                             \
+        .absolute_mode_clamp_max_y =                                                               \
+            COND_CODE_1(DT_INST_PROP(n, rotate_90), (DT_INST_PROP(n, absolute_mode_clamp_max_x)),  \
+                        (DT_INST_PROP(n, absolute_mode_clamp_max_y))),                             \
         .rounding_scroll = DT_INST_PROP(n, rounding_scroll),                                       \
         .rounding_scroll_top_height = DT_INST_PROP(n, rounding_scroll_top_height),                 \
         .rounding_scroll_top_width = DT_INST_PROP(n, rounding_scroll_top_width),                   \
