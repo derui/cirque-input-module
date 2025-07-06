@@ -300,7 +300,7 @@ static bool pinnacle_handle_rounding_scroll(const struct device *dev, int16_t cl
     }
     int16_t diff_degree = (int16_t)floor(diff_angle * 180 / M_PI);
 
-    if (diff_degree >= config->rounding_scroll_sensitivity) {
+    if (abs(diff_degree) >= config->rounding_scroll_sensitivity) {
         data->rounding_scroll_last_angle = angle;
 
         LOG_DBG("current angle: %f, diff degree: %d", angle, diff_degree);
