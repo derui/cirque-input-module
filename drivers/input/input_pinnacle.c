@@ -270,6 +270,7 @@ static bool pinnacle_handle_rounding_scroll(const struct device *dev, int16_t cl
 
     if (z <= 0) {
         data->in_rounding_scroll = false;
+        LOG_DBG("Rounting scroll deactivated");
         return false;
     }
 
@@ -291,6 +292,7 @@ static bool pinnacle_handle_rounding_scroll(const struct device *dev, int16_t cl
     }
     int16_t diff_degree = (int16_t)floor(diff_angle * 180 / M_PI);
 
+    LOG_DBG("current angle: %f, diff degree: %d", angle, diff_degree);
     input_report_rel(dev, INPUT_REL_WHEEL, diff_degree, false, K_FOREVER);
 
     return true;
