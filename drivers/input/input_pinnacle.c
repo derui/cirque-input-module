@@ -240,25 +240,32 @@ static bool pinnacle_handle_rounding_scroll(const struct device *dev, int16_t cl
                                             int16_t clamped_y, uint8_t z) {
     const struct pinnacle_config *config = dev->config;
     if (!config->rounding_scroll || !config->absolute_mode) {
-      LOG_ERR("Rounding scroll disabled");
+        LOG_ERR("Rounding scroll disabled");
         return false;
     }
 
-    uint16_t central_x =config->absolute_mode_clamp_min_x + 
+    uint16_t central_x =
+        config->absolute_mode_clamp_min_x +
         (config->absolute_mode_clamp_max_x - config->absolute_mode_clamp_min_x) / 2;
-    uint16_t central_y =config->absolute_mode_clamp_min_y +
+    uint16_t central_y =
+        config->absolute_mode_clamp_min_y +
         (config->absolute_mode_clamp_max_y - config->absolute_mode_clamp_min_y) / 2;
+
     int16_t dx = clamped_x - central_x;
     int16_t dy = clamped_y - central_y;
+    dx = ((dx - config->absolute_mode_clamp_min_x) * config->absolute_mode_scale_to_width) /
+         (config->absolute_mode_clamp_max_x - config->absolute_mode_clamp_min_x);
+    dy = ((dy - config->absolute_mode_clamp_min_y) * config->absolute_mode_scale_to_height) /
+         (config->absolute_mode_clamp_max_y - config->absolute_mode_clamp_min_y);
 
     // initial detection when tapped
     struct pinnacle_data *data = dev->data;
     if (data->in_abs || z <= 0) {
-      data->in_rounding_scroll = false;
-      LOG_DBG("Rounding scroll deactivated");
-      return false;
+        data->in_rounding_scroll = false;
+        LOG_DBG("Rounding scroll deactivated");
+        return false;
     }
-  
+
     if (!data->in_rounding_scroll && z > 0) {
         uint16_t left_x = central_x - config->rounding_scroll_top_width / 2;
         uint16_t right_x = left_x + config->rounding_scroll_top_width;
@@ -373,7 +380,7 @@ static void pinnacle_report_data_abs(const struct device *dev) {
 
         data->absolute_mode_last_x = x;
         data->absolute_mode_last_y = y;
-      
+
         if (!data->in_abs) {
             data->in_abs = true;
             dx = 0;
