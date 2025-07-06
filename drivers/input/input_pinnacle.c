@@ -243,10 +243,10 @@ static bool pinnacle_handle_rounding_scroll(const struct device *dev, int16_t cl
         return false;
     }
 
-    uint16_t central_x =
-        (config->absolute_mode_clamp_max_x + config->absolute_mode_clamp_min_x) / 2;
-    uint16_t central_y =
-        (config->absolute_mode_clamp_max_y + config->absolute_mode_clamp_min_y) / 2;
+    uint16_t central_x =config->absolute_mode_clamp_min_x + 
+        (config->absolute_mode_clamp_max_x - config->absolute_mode_clamp_min_x) / 2;
+    uint16_t central_y =config->absolute_mode_clamp_min_y +
+        (config->absolute_mode_clamp_max_y - config->absolute_mode_clamp_min_y) / 2;
     int16_t dx = clamped_x - central_x;
     int16_t dy = clamped_y - central_y;
 
@@ -283,7 +283,6 @@ static bool pinnacle_handle_rounding_scroll(const struct device *dev, int16_t cl
     // calculate angle of the tap
     float angle = atan2(dy, dx);
     float diff_angle = angle - data->rounding_scroll_last_angle;
-    data->rounding_scroll_last_angle = angle;
 
     if (diff_angle > M_PI) {
         diff_angle -= 2 * M_PI;
@@ -291,6 +290,10 @@ static bool pinnacle_handle_rounding_scroll(const struct device *dev, int16_t cl
         diff_angle += 2 * M_PI;
     }
     int16_t diff_degree = (int16_t)floor(diff_angle * 180 / M_PI);
+
+    if (diff_degree > 0) {
+        data->rounding_scroll_last_angle = angle;
+    }
 
     LOG_DBG("current angle: %f, diff degree: %d", angle, diff_degree);
     input_report_rel(dev, INPUT_REL_WHEEL, diff_degree, false, K_FOREVER);
