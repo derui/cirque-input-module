@@ -363,9 +363,13 @@ static void pinnacle_report_data_abs(const struct device *dev) {
             (config->absolute_mode_clamp_max_x - config->absolute_mode_clamp_min_x);
         y = ((y - config->absolute_mode_clamp_min_y) * config->absolute_mode_scale_to_height) /
             (config->absolute_mode_clamp_max_y - config->absolute_mode_clamp_min_y);
+        int16_t dx = x - data->absolute_mode_last_x;
+        int16_t dy = y - data->absolute_mode_last_y;
+        data->absolute_mode_last_x = x;
+        data->absolute_mode_last_y = y;
 
-        input_report_abs(dev, INPUT_ABS_X, x, false, K_FOREVER);
-        input_report_abs(dev, INPUT_ABS_Y, y, true, K_FOREVER);
+        input_report_rel(dev, INPUT_REL_X, dx, false, K_FOREVER);
+        input_report_rel(dev, INPUT_REL_Y, dy, true, K_FOREVER);
     }
 }
 
