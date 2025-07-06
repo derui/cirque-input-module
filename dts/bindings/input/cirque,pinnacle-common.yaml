@@ -70,6 +70,6 @@ properties:
     description: Rectangle space to detect initiating rounding scroll. Need `absolute-mode` is `on`
   rounding-scroll-top-height:
     type: int
-    default: 128
+    default: 256
     description: Rectangle space to detect initiating rounding scroll. Need `absolute-mode` is `on`
 
