@@ -66,10 +66,10 @@ properties:
     type: boolean
   rounding-scroll-top-width:
     type: int
-    default: 192
+    default: 1024
     description: Rectangle space to detect initiating rounding scroll. Need `absolute-mode` is `on`
   rounding-scroll-top-height:
     type: int
-    default: 96
+    default: 128
     description: Rectangle space to detect initiating rounding scroll. Need `absolute-mode` is `on`
 
