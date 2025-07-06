@@ -300,13 +300,14 @@ static bool pinnacle_handle_rounding_scroll(const struct device *dev, int16_t cl
     }
     int16_t diff_degree = (int16_t)floor(diff_angle * 180 / M_PI);
 
-    if (diff_degree > 0) {
+    if (diff_degree >= config->rounding_scroll_sensitivity) {
         data->rounding_scroll_last_angle = angle;
-    }
 
-    LOG_DBG("current angle: %f, diff degree: %d", angle, diff_degree);
-  // invert direction.
-    input_report_rel(dev, INPUT_REL_WHEEL, -diff_degree, true, K_FOREVER);
+        LOG_DBG("current angle: %f, diff degree: %d", angle, diff_degree);
+
+        // invert direction.
+        input_report_rel(dev, INPUT_REL_WHEEL, -diff_degree, true, K_FOREVER);
+    }
 
     return true;
 }
@@ -765,6 +766,7 @@ static int pinnacle_pm_action(const struct device *dev, enum pm_device_action ac
         .rounding_scroll = DT_INST_PROP(n, rounding_scroll),                                       \
         .rounding_scroll_top_height = DT_INST_PROP(n, rounding_scroll_top_height),                 \
         .rounding_scroll_top_width = DT_INST_PROP(n, rounding_scroll_top_width),                   \
+        .rounding_scroll_sensitivity = DT_INST_PROP(n, rounding_scroll_sensitivity),               \
         .x_axis_z_min = DT_INST_PROP_OR(n, x_axis_z_min, 5),                                       \
         .y_axis_z_min = DT_INST_PROP_OR(n, y_axis_z_min, 4),                                       \
         .sensitivity = DT_INST_ENUM_IDX_OR(n, sensitivity, PINNACLE_SENSITIVITY_1X),               \

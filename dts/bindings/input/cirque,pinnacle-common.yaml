@@ -72,4 +72,8 @@ properties:
     type: int
     default: 256
     description: Rectangle space to detect initiating rounding scroll. Need `absolute-mode` is `on`
+  rounding-scroll-sensitivity:
+    type: int
+    default: 4
+    description: Sensitivity of scroll.
 
