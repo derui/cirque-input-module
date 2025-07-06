@@ -240,7 +240,7 @@ static bool pinnacle_handle_rounding_scroll(const struct device *dev, int16_t cl
                                             int16_t clamped_y, uint8_t z) {
     const struct pinnacle_config *config = dev->config;
     if (!config->rounding_scroll || !config->absolute_mode) {
-      LOG_ERR("Rounding scroll deactivated: angle: %f", data->rounding_scroll_last_angle);
+      LOG_ERR("Rounding scroll disabled");
         return false;
     }
 
