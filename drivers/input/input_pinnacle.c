@@ -252,7 +252,7 @@ static bool pinnacle_handle_rounding_scroll(const struct device *dev, int16_t cl
 
     // initial detection when tapped
     struct pinnacle_data *data = dev->data;
-    if (!data->in_rounding_scroll) {
+    if (!data->in_rounding_scroll && z > 0) {
         uint16_t left_x = central_x - config->rounding_scroll_top_width / 2;
         uint16_t right_x = left_x + config->rounding_scroll_top_width;
         uint16_t top_y = config->absolute_mode_clamp_min_y;
