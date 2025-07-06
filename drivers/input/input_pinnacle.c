@@ -10,6 +10,11 @@
 
 #include "input_pinnacle.h"
 
+// define PI if not defined
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 LOG_MODULE_REGISTER(pinnacle, CONFIG_INPUT_LOG_LEVEL);
 
 static int pinnacle_seq_read(const struct device *dev, const uint8_t addr, uint8_t *buf,
