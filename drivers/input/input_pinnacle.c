@@ -252,6 +252,12 @@ static bool pinnacle_handle_rounding_scroll(const struct device *dev, int16_t cl
 
     // initial detection when tapped
     struct pinnacle_data *data = dev->data;
+    if (data->in_abs || z <= 0) {
+      data->in_rounding_scroll = false;
+      LOG_DBG("Rounting scroll deactivated");
+      return false;
+    }
+  
     if (!data->in_rounding_scroll && z > 0) {
         uint16_t left_x = central_x - config->rounding_scroll_top_width / 2;
         uint16_t right_x = left_x + config->rounding_scroll_top_width;
@@ -265,12 +271,6 @@ static bool pinnacle_handle_rounding_scroll(const struct device *dev, int16_t cl
             return true;
         }
 
-        return false;
-    }
-
-    if (z <= 0) {
-        data->in_rounding_scroll = false;
-        LOG_DBG("Rounting scroll deactivated");
         return false;
     }
 
@@ -368,6 +368,7 @@ static void pinnacle_report_data_abs(const struct device *dev) {
 
         data->absolute_mode_last_x = x;
         data->absolute_mode_last_y = y;
+      
         if (!data->in_abs) {
             data->in_abs = true;
             dx = 0;
