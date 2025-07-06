@@ -315,10 +315,11 @@ static bool pinnacle_handle_rounding_scroll(const struct device *dev, int16_t cl
         LOG_DBG("current angle: %f, diff degree: %d", angle, diff_degree);
 
         // invert direction.
+        int16_t wheel_rel = 1;
         if (config->x_invert) {
-            diff_degree = -diff_degree;
+            wheel_rel = -wheel_rel;
         }
-        input_report_rel(dev, INPUT_REL_WHEEL, -diff_degree, true, K_FOREVER);
+        input_report_rel(dev, INPUT_REL_WHEEL, -wheel_rel, true, K_FOREVER);
     }
 
     return true;
