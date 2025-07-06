@@ -6,6 +6,7 @@
 #include <zephyr/pm/device.h>
 
 #include <zephyr/logging/log.h>
+#include <math.h>
 
 #include "input_pinnacle.h"
 
@@ -229,17 +230,65 @@ static int pinnacle_era_write(const struct device *dev, const uint16_t addr, uin
     return ret;
 }
 
-static bool pinnacle_is_rounding_scroll(const struct device *dev, int16_t dx, int16_t dy) {
+// need CONFIG_NEWLIB_LIBC=y
+static bool pinnacle_handle_rounding_scroll(const struct device *dev, int16_t clamped_x,
+                                            int16_t clamped_y, uint8_t z) {
     const struct pinnacle_config *config = dev->config;
-    if (config->rounding_scroll_top_height == 0 || config->rounding_scroll_top_width == 0) {
+    if (!config->rounding_scroll || !config->absolute_mode) {
         return false;
     }
 
-    if (dx < config->rounding_scroll_top_width && dy < config->rounding_scroll_top_height) {
+    uint16_t central_x =
+        (config->absolute_mode_clamp_max_x + config->absolute_mode_clamp_min_x) / 2;
+    uint16_t central_y =
+        (config->absolute_mode_clamp_max_y + config->absolute_mode_clamp_min_y) / 2;
+    int16_t dx = clamped_x - central_x;
+    int16_t dy = clamped_y - central_y;
+
+    // initial detection when tapped
+    struct pinnacle_data *data = dev->data;
+    if (!data->in_rounding_scroll) {
+        uint16_t left_x = central_x - config->rounding_scroll_top_width / 2;
+        uint16_t right_x = left_x + config->rounding_scroll_top_width;
+        uint16_t top_y = config->absolute_mode_clamp_min_y;
+        uint16_t bottom_y = top_y + config->rounding_scroll_top_height;
+
+        if ((clamped_x >= left_x && clamped_x <= right_x) &&
+            (clamped_y >= top_y && clamped_y <= bottom_y)) {
+            data->in_rounding_scroll = true;
+            data->rounding_scroll_last_angle = atan2(dy, dx);
+            return true;
+        }
+
+        return false;
+    }
+
+    if (z <= 0) {
+        data->in_rounding_scroll = false;
+        return false
+    }
+
+    // if the tap center of trackpad, ignore it.
+    if (dx == 0 && dy == 0) {
+        // but keep handling the scroll.
         return true;
     }
 
-    return false;
+    // calculate angle of the tap
+    float angle = atan2(dy, dx);
+    float diff_angle = angle - data->rounding_scroll_last_angle;
+    data->rounding_scroll_last_angle = angle;
+
+    if (diff_angle > M_PI) {
+        diff_angle -= 2 * M_PI;
+    } else if (diff_angle < M_PI) {
+        diff_angle += 2 * M_PI;
+    }
+    uint8_t diff_degree = floor(diff_angle * 180 / M_PI);
+
+    input_report_rel(dev, INPUT_EV_MSC, INPUT_REL_WHEEL, diff_degree, false, K_FOREVER);
+
+    return true;
 }
 
 static void pinnacle_report_data_abs(const struct device *dev) {
@@ -300,8 +349,10 @@ static void pinnacle_report_data_abs(const struct device *dev) {
         }
 
         // scale to be in the configured interval
-        x = ((x - config->absolute_mode_clamp_min_x) * config->absolute_mode_scale_to_width) / (config->absolute_mode_clamp_max_x - config->absolute_mode_clamp_min_x);
-        y = ((y - config->absolute_mode_clamp_min_y) * config->absolute_mode_scale_to_height) / (config->absolute_mode_clamp_max_y - config->absolute_mode_clamp_min_y);
+        x = ((x - config->absolute_mode_clamp_min_x) * config->absolute_mode_scale_to_width) /
+            (config->absolute_mode_clamp_max_x - config->absolute_mode_clamp_min_x);
+        y = ((y - config->absolute_mode_clamp_min_y) * config->absolute_mode_scale_to_height) /
+            (config->absolute_mode_clamp_max_y - config->absolute_mode_clamp_min_y);
 
         input_report_abs(dev, INPUT_ABS_X, x, false, K_FOREVER);
         input_report_abs(dev, INPUT_ABS_Y, y, true, K_FOREVER);
@@ -566,7 +617,7 @@ static int pinnacle_init(const struct device *dev) {
 
     uint8_t packet[1];
     ret = pinnacle_seq_read(dev, PINNACLE_SLEEP_INTERVAL, packet, 1);
- 
+
     if (ret >= 0) {
         LOG_DBG("Default sleep interval %d", packet[0]);
     }

@@ -79,6 +79,7 @@ struct pinnacle_data {
     struct gpio_callback gpio_cb;
     struct k_work work;
     bool in_rounding_scroll;
+    // It is radian
     float rounding_scroll_last_angle;
 };
 
