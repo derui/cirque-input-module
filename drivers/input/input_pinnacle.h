@@ -81,6 +81,7 @@ struct pinnacle_data {
     bool in_rounding_scroll;
     // It is radian
     float rounding_scroll_last_angle;
+    bool in_abs;
     int16_t absolute_mode_last_x, absolute_mode_last_y;
 };
 
