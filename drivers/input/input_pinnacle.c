@@ -291,7 +291,7 @@ static bool pinnacle_handle_rounding_scroll(const struct device *dev, int16_t cl
     }
     int16_t diff_degree = (int16_t)floor(diff_angle * 180 / M_PI);
 
-    input_report_rel(dev, INPUT_EV_REL, INPUT_REL_WHEEL, diff_degree, false, K_FOREVER);
+    input_report_rel(dev, INPUT_REL_WHEEL, diff_degree, false, K_FOREVER);
 
     return true;
 }
