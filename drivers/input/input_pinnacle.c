@@ -7,6 +7,7 @@
 
 #include <zephyr/logging/log.h>
 #include <math.h>
+#include <stdlib.h>
 
 #include "input_pinnacle.h"
 
