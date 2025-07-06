@@ -335,18 +335,21 @@ static void pinnacle_report_data_abs(const struct device *dev) {
         }
     }
 
+    if (x < config->absolute_mode_clamp_min_x) {
+        x = config->absolute_mode_clamp_min_x;
+    } else if (x > config->absolute_mode_clamp_max_x) {
+        x = config->absolute_mode_clamp_max_x;
+    }
+    if (y < config->absolute_mode_clamp_min_y) {
+        y = config->absolute_mode_clamp_min_y;
+    } else if (y > config->absolute_mode_clamp_max_y) {
+        y = config->absolute_mode_clamp_max_y;
+    }
+
+    bool rounding_scroll_handled = pinnacle_handle_rounding_scroll(dev, x, y, z);
+
     data->btn_cache = btn;
-    if (z > 0) {
-        if (x < config->absolute_mode_clamp_min_x) {
-            x = config->absolute_mode_clamp_min_x;
-        } else if (x > config->absolute_mode_clamp_max_x) {
-            x = config->absolute_mode_clamp_max_x;
-        }
-        if (y < config->absolute_mode_clamp_min_y) {
-            y = config->absolute_mode_clamp_min_y;
-        } else if (y > config->absolute_mode_clamp_max_y) {
-            y = config->absolute_mode_clamp_max_y;
-        }
+    if (z > 0 && !rounding_scroll_handled) {
 
         // scale to be in the configured interval
         x = ((x - config->absolute_mode_clamp_min_x) * config->absolute_mode_scale_to_width) /
