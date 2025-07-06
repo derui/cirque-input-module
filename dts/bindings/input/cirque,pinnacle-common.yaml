@@ -62,4 +62,14 @@ properties:
     description: |
       Specification says that active reporting of absolute position
       is: 128 ≤ X ≤1920 and 64 ≤ Y ≤ 1472, but on my touchpad, I need other values.
+  rounding-scroll:
+    type: boolean
+  rounding-scroll-top-width:
+    type: int
+    default: 96
+    description: Rectangle space to detect initiating rounding scroll. Need `absolute-mode` is `on`
+  rounding-scroll-top-height:
+    type: int
+    default: 96
+    description: Rectangle space to detect initiating rounding scroll. Need `absolute-mode` is `on`
 

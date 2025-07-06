@@ -229,6 +229,19 @@ static int pinnacle_era_write(const struct device *dev, const uint16_t addr, uin
     return ret;
 }
 
+static bool pinnacle_is_rounding_scroll(const struct device *dev, int16_t dx, int16_t dy) {
+    const struct pinnacle_config *config = dev->config;
+    if (config->rounding_scroll_top_height == 0 || config->rounding_scroll_top_width == 0) {
+        return false;
+    }
+
+    if (dx < config->rounding_scroll_top_width && dy < config->rounding_scroll_top_height) {
+        return true;
+    }
+
+    return false;
+}
+
 static void pinnacle_report_data_abs(const struct device *dev) {
     const struct pinnacle_config *config = dev->config;
     uint8_t packet[6];
@@ -662,6 +675,9 @@ static int pinnacle_pm_action(const struct device *dev, enum pm_device_action ac
         .absolute_mode_clamp_max_x = DT_INST_PROP(n, absolute_mode_clamp_max_x),                   \
         .absolute_mode_clamp_min_y = DT_INST_PROP(n, absolute_mode_clamp_min_y),                   \
         .absolute_mode_clamp_max_y = DT_INST_PROP(n, absolute_mode_clamp_max_y),                   \
+        .rounding_scroll = DT_INST_PROP(n, rounding_scroll),                                       \
+        .rounding_scroll_top_height = DT_INST_PROP(n, rounding_scroll_top_height),                 \
+        .rounding_scroll_top_width = DT_INST_PROP(n, rounding_scroll_top_width),                   \
         .x_axis_z_min = DT_INST_PROP_OR(n, x_axis_z_min, 5),                                       \
         .y_axis_z_min = DT_INST_PROP_OR(n, y_axis_z_min, 4),                                       \
         .sensitivity = DT_INST_ENUM_IDX_OR(n, sensitivity, PINNACLE_SENSITIVITY_1X),               \
