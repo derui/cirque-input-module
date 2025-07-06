@@ -341,6 +341,13 @@ static void pinnacle_report_data_abs(const struct device *dev) {
     int16_t y = ((xy_high & 0xF0) << 4) | y_low;
     int8_t z = (uint8_t)(packet[5] & 0x1F);
 
+    // handle rotate 90 to swap x/y
+    if (config->rotate_90) {
+        int16_t tmp = x;
+        x = y;
+        y = tmp;
+    }
+
     LOG_DBG("button: %d, x: %d y: %d z: %d", btn, x, y, z);
     if (data->in_int) {
         LOG_DBG("Clearing status bit");
