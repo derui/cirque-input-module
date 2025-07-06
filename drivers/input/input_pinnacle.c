@@ -265,7 +265,7 @@ static bool pinnacle_handle_rounding_scroll(const struct device *dev, int16_t cl
 
     if (z <= 0) {
         data->in_rounding_scroll = false;
-        return false
+        return false;
     }
 
     // if the tap center of trackpad, ignore it.
@@ -281,12 +281,12 @@ static bool pinnacle_handle_rounding_scroll(const struct device *dev, int16_t cl
 
     if (diff_angle > M_PI) {
         diff_angle -= 2 * M_PI;
-    } else if (diff_angle < M_PI) {
+    } else if (diff_angle < -M_PI) {
         diff_angle += 2 * M_PI;
     }
-    uint8_t diff_degree = floor(diff_angle * 180 / M_PI);
+    int16_t diff_degree = (int16_t)floor(diff_angle * 180 / M_PI);
 
-    input_report_rel(dev, INPUT_EV_MSC, INPUT_REL_WHEEL, diff_degree, false, K_FOREVER);
+    input_report_rel(dev, INPUT_EV_REL, INPUT_REL_WHEEL, diff_degree, false, K_FOREVER);
 
     return true;
 }
