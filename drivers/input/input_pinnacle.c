@@ -768,12 +768,24 @@ static int pinnacle_pm_action(const struct device *dev, enum pm_device_action ac
         .no_taps = DT_INST_PROP(n, no_taps),                                                       \
         .no_secondary_tap = DT_INST_PROP(n, no_secondary_tap),                                     \
         .absolute_mode = DT_INST_PROP(n, absolute_mode),                                           \
-        .absolute_mode_scale_to_width = DT_INST_PROP(n, absolute_mode_scale_to_width),             \
-        .absolute_mode_scale_to_height = DT_INST_PROP(n, absolute_mode_scale_to_height),           \
-        .absolute_mode_clamp_min_x = DT_INST_PROP(n, absolute_mode_clamp_min_x),                   \
-        .absolute_mode_clamp_max_x = DT_INST_PROP(n, absolute_mode_clamp_max_x),                   \
-        .absolute_mode_clamp_min_y = DT_INST_PROP(n, absolute_mode_clamp_min_y),                   \
-        .absolute_mode_clamp_max_y = DT_INST_PROP(n, absolute_mode_clamp_max_y),                   \
+        .absolute_mode_scale_to_width = COND_CODE_1(DT_INST_PROP(n, rotate_90),                   \
+                                                   (DT_INST_PROP(n, absolute_mode_scale_to_height)), \
+                                                   (DT_INST_PROP(n, absolute_mode_scale_to_width))), \
+        .absolute_mode_scale_to_height = COND_CODE_1(DT_INST_PROP(n, rotate_90),                  \
+                                                    (DT_INST_PROP(n, absolute_mode_scale_to_width)), \
+                                                    (DT_INST_PROP(n, absolute_mode_scale_to_height))), \
+        .absolute_mode_clamp_min_x = COND_CODE_1(DT_INST_PROP(n, rotate_90),                      \
+                                                (DT_INST_PROP(n, absolute_mode_clamp_min_y)),       \
+                                                (DT_INST_PROP(n, absolute_mode_clamp_min_x))),      \
+        .absolute_mode_clamp_max_x = COND_CODE_1(DT_INST_PROP(n, rotate_90),                      \
+                                                (DT_INST_PROP(n, absolute_mode_clamp_max_y)),       \
+                                                (DT_INST_PROP(n, absolute_mode_clamp_max_x))),      \
+        .absolute_mode_clamp_min_y = COND_CODE_1(DT_INST_PROP(n, rotate_90),                      \
+                                                (DT_INST_PROP(n, absolute_mode_clamp_min_x)),       \
+                                                (DT_INST_PROP(n, absolute_mode_clamp_min_y))),      \
+        .absolute_mode_clamp_max_y = COND_CODE_1(DT_INST_PROP(n, rotate_90),                      \
+                                                (DT_INST_PROP(n, absolute_mode_clamp_max_x)),       \
+                                                (DT_INST_PROP(n, absolute_mode_clamp_max_y))),      \
         .rounding_scroll = DT_INST_PROP(n, rounding_scroll),                                       \
         .rounding_scroll_top_height = DT_INST_PROP(n, rounding_scroll_top_height),                 \
         .rounding_scroll_top_width = DT_INST_PROP(n, rounding_scroll_top_width),                   \
