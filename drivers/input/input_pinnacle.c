@@ -277,7 +277,7 @@ static bool pinnacle_handle_rounding_scroll(const struct device *dev, int16_t cl
             (clamped_y >= top_y && clamped_y <= bottom_y)) {
             data->in_rounding_scroll = true;
             data->rounding_scroll_last_angle = atan2(dy, dx);
-            LOG_ERR("Rounding scroll deactivated: angle: %f", data->rounding_scroll_last_angle);
+            LOG_DBG("Rounding scroll deactivated: angle: %f", data->rounding_scroll_last_angle);
             return true;
         }
 
