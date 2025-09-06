@@ -404,7 +404,6 @@ static void pinnacle_report_data_abs(const struct device *dev) {
             data->in_abs = true;
             dx = 0;
             dy = 0;
-            data->last_time = k_uptime_get();
         }
 
         // calculate acceleration factor if enabled
@@ -419,37 +418,40 @@ static void pinnacle_report_data_abs(const struct device *dev) {
 
 // apply acceleration to dx, dy.
 // Do not apply acceleration if config->acceleration is false
-static void pinncle_acceleration(const struct device *dev, int16_t *dx, int16_t *dy) {
-  struct pinnacle_data *data = dev->data;
-  const struct pinnacle_config* = dev->config;
+static void pinnacle_acceleration(const struct device *dev, int16_t *dx, int16_t *dy) {
+    struct pinnacle_data *data = dev->data;
+    const struct pinnacle_config *config = dev->config;
 
-  if (!config->acceleration) {
-    return
-      }
-  
+    if (!config->acceleration) {
+        return;
+    }
+
     int64_t current_time = k_uptime_get();
     int64_t time_diff = current_time - data->last_time;
 
-    // can not calculation
+    // cannot calculate if no time has passed
     if (time_diff <= 0) {
         return;
     }
 
-    float distance = sqrtf(dx*dx, dy*dy)
-      float velocity = distance / time_diff;
+    float distance = sqrtf((float)(*dx * *dx + *dy * *dy));
+    float velocity = distance / (float)time_diff;
     float accel_factor = 1.0f;
     float base_velocity = 0.5f;
     // minimum threshold keeps slow movement unaffected
-    float threthold = 1.0f;
+    float threshold = 1.0f;
     float exponent = 2.0f;
 
     if (velocity > threshold) {
-      accel_factor = powf(velocity / base_velocity, exponent)
+        accel_factor = powf(velocity / base_velocity, exponent);
     }
 
     // apply acceleration factor
     *dx = (int16_t)(*dx * accel_factor);
     *dy = (int16_t)(*dy * accel_factor);
+
+    // update last time
+    data->last_time = current_time;
 }
 
 static void pinnacle_report_data_rel(const struct device *dev) {
