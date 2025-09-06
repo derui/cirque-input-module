@@ -83,6 +83,8 @@ struct pinnacle_data {
     float rounding_scroll_last_angle;
     bool in_abs;
     int16_t absolute_mode_last_x, absolute_mode_last_y;
+  // last time on finger movement. Reset this value when finger released.
+  int64_t last_time;
 };
 
 enum pinnacle_sensitivity {
