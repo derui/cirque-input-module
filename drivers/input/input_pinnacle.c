@@ -794,6 +794,7 @@ static int pinnacle_pm_action(const struct device *dev, enum pm_device_action ac
             COND_CODE_1(DT_INST_PROP(n, rotate_90), (DT_INST_PROP(n, absolute_mode_clamp_max_x)),  \
                         (DT_INST_PROP(n, absolute_mode_clamp_max_y))),                             \
         .rounding_scroll = DT_INST_PROP(n, rounding_scroll),                                       \
+        .acceleration = DT_INST_PROP(n, acceleration),                                             \
         .rounding_scroll_top_height = DT_INST_PROP(n, rounding_scroll_top_height),                 \
         .rounding_scroll_top_width = DT_INST_PROP(n, rounding_scroll_top_width),                   \
         .rounding_scroll_sensitivity = DT_INST_PROP(n, rounding_scroll_sensitivity),               \
