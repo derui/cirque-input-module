@@ -346,10 +346,10 @@ static void pinnacle_acceleration(const struct device *dev, int16_t *dx, int16_t
     float distance = sqrtf((float)(*dx * *dx + *dy * *dy));
     float velocity = distance / (float)time_diff;
     float accel_factor = 1.0f;
-    float base_velocity = 0.5f;
+    float base_velocity = 2.0f;
     // minimum threshold keeps slow movement unaffected
-    float threshold = 1.0f;
-    float exponent = 2.0f;
+    float threshold = 3.0f;
+    float exponent = 1.2f;
 
     if (velocity > threshold) {
         accel_factor = powf(velocity / base_velocity, exponent);
