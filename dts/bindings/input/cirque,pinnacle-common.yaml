@@ -64,6 +64,11 @@ properties:
       is: 128 ≤ X ≤1920 and 64 ≤ Y ≤ 1472, but on my touchpad, I need other values.
   rounding-scroll:
     type: boolean
+  acceleration:
+    type: boolean
+    description: |
+      Enable acceleration of cursor movement with velocity-besed acceleration.
+      We recommend to set lower value to ZMK_POINTING_DEFAULT_MOVE_VAL when using this option.
   rounding-scroll-top-width:
     type: int
     default: 1024

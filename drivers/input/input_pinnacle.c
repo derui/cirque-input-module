@@ -325,6 +325,44 @@ static bool pinnacle_handle_rounding_scroll(const struct device *dev, int16_t cl
     return true;
 }
 
+// apply acceleration to dx, dy.
+// Do not apply acceleration if config->acceleration is false
+static void pinnacle_acceleration(const struct device *dev, int16_t *dx, int16_t *dy) {
+    struct pinnacle_data *data = dev->data;
+    const struct pinnacle_config *config = dev->config;
+
+    if (!config->acceleration) {
+        return;
+    }
+
+    int64_t current_time = k_uptime_get();
+    int64_t time_diff = current_time - data->last_time;
+
+    // cannot calculate if no time has passed
+    if (time_diff <= 0) {
+        return;
+    }
+
+    float distance = sqrtf((float)(*dx * *dx + *dy * *dy));
+    float velocity = distance / (float)time_diff;
+    float accel_factor = 1.0f;
+    float base_velocity = 2.0f;
+    // minimum threshold keeps slow movement unaffected
+    float threshold = 3.0f;
+    float exponent = 1.2f;
+
+    if (velocity > threshold) {
+        accel_factor = powf(velocity / base_velocity, exponent);
+    }
+
+    // apply acceleration factor
+    *dx = (int16_t)(*dx * accel_factor);
+    *dy = (int16_t)(*dy * accel_factor);
+
+    // update last time
+    data->last_time = current_time;
+}
+
 static void pinnacle_report_data_abs(const struct device *dev) {
     const struct pinnacle_config *config = dev->config;
     uint8_t packet[6];
@@ -391,7 +429,6 @@ static void pinnacle_report_data_abs(const struct device *dev) {
 
     data->btn_cache = btn;
     if (z > 0 && !rounding_scroll_handled) {
-
         // scale to be in the configured interval
         x = scale_coordinate_x(config, x);
         y = scale_coordinate_y(config, y);
@@ -407,6 +444,9 @@ static void pinnacle_report_data_abs(const struct device *dev) {
             dy = 0;
         }
 
+        // calculate acceleration factor if enabled
+        pinnacle_acceleration(dev, &dx, &dy);
+        
         input_report_rel(dev, INPUT_REL_X, dx, false, K_FOREVER);
         input_report_rel(dev, INPUT_REL_Y, dy, true, K_FOREVER);
     } else if (z <= 0) {
@@ -794,6 +834,7 @@ static int pinnacle_pm_action(const struct device *dev, enum pm_device_action ac
             COND_CODE_1(DT_INST_PROP(n, rotate_90), (DT_INST_PROP(n, absolute_mode_clamp_max_x)),  \
                         (DT_INST_PROP(n, absolute_mode_clamp_max_y))),                             \
         .rounding_scroll = DT_INST_PROP(n, rounding_scroll),                                       \
+        .acceleration = DT_INST_PROP(n, acceleration),                                             \
         .rounding_scroll_top_height = DT_INST_PROP(n, rounding_scroll_top_height),                 \
         .rounding_scroll_top_width = DT_INST_PROP(n, rounding_scroll_top_width),                   \
         .rounding_scroll_sensitivity = DT_INST_PROP(n, rounding_scroll_sensitivity),               \
