@@ -276,13 +276,11 @@ static bool pinnacle_handle_rounding_scroll(const struct device *dev, int16_t cl
     dy = scale_coordinate_y(config, dy);
 
     if (!data->in_rounding_scroll && z > 0) {
-        uint16_t left_x = central_x - config->rounding_scroll_top_width / 2;
-        uint16_t right_x = left_x + config->rounding_scroll_top_width;
-        uint16_t top_y = config->absolute_mode_clamp_min_y;
-        uint16_t bottom_y = top_y + config->rounding_scroll_top_height;
+      // calculate length of touched point from central of touch pad.
+      uint16_t r = sqrt((clamped_x - central_x) * (clamped_x - central_x) + (clamped_y - central_y) * (clamped_y - central_y));
 
-        if ((clamped_x >= left_x && clamped_x <= right_x) &&
-            (clamped_y >= top_y && clamped_y <= bottom_y)) {
+      // when the finger is near the edge, start rounding scroll mode.
+      if (r < config->rounding_scroll_detection_edge) {
             data->in_rounding_scroll = true;
             data->rounding_scroll_last_angle = atan2(dy, dx);
             LOG_DBG("Rounding scroll deactivated: angle: %f", data->rounding_scroll_last_angle);
@@ -835,8 +833,7 @@ static int pinnacle_pm_action(const struct device *dev, enum pm_device_action ac
                         (DT_INST_PROP(n, absolute_mode_clamp_max_y))),                             \
         .rounding_scroll = DT_INST_PROP(n, rounding_scroll),                                       \
         .acceleration = DT_INST_PROP(n, acceleration),                                             \
-        .rounding_scroll_top_height = DT_INST_PROP(n, rounding_scroll_top_height),                 \
-        .rounding_scroll_top_width = DT_INST_PROP(n, rounding_scroll_top_width),                   \
+        .rounding_scroll_detection_width = DT_INST_PROP(n, rounding_scroll_detection_width),       \
         .rounding_scroll_sensitivity = DT_INST_PROP(n, rounding_scroll_sensitivity),               \
         .x_axis_z_min = DT_INST_PROP_OR(n, x_axis_z_min, 5),                                       \
         .y_axis_z_min = DT_INST_PROP_OR(n, y_axis_z_min, 4),                                       \

@@ -69,16 +69,12 @@ properties:
     description: |
       Enable acceleration of cursor movement with velocity-besed acceleration.
       We recommend to set lower value to ZMK_POINTING_DEFAULT_MOVE_VAL when using this option.
-  rounding-scroll-top-width:
+  rounding-scroll-detection-width:
     type: int
-    default: 1024
-    description: Rectangle space to detect initiating rounding scroll. Need `absolute-mode` is `on`
-  rounding-scroll-top-height:
-    type: int
-    default: 256
-    description: Rectangle space to detect initiating rounding scroll. Need `absolute-mode` is `on`
+    default: 24
+    description: Edge size of the rounding scroll detection
   rounding-scroll-sensitivity:
     type: int
     default: 4
-    description: Sensitivity of scroll.
+    description: Sensitivity of scroll. Increasing this value affects scroll to slow.
 
