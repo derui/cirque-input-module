@@ -78,6 +78,11 @@ struct pinnacle_data {
     const struct device *dev;
     struct gpio_callback gpio_cb;
     struct k_work work;
+    bool in_rounding_scroll;
+    // It is radian
+    float rounding_scroll_last_angle;
+    bool in_abs;
+    int16_t absolute_mode_last_x, absolute_mode_last_y;
 };
 
 enum pinnacle_sensitivity {
@@ -100,9 +105,11 @@ struct pinnacle_config {
     pinnacle_seq_read_t seq_read;
     pinnacle_write_t write;
 
-    bool rotate_90, sleep_en, no_taps, no_secondary_tap, x_invert, y_invert;
+    bool rotate_90, sleep_en, no_taps, no_secondary_tap, x_invert, y_invert, absolute_mode, rounding_scroll;
     enum pinnacle_sensitivity sensitivity;
     uint8_t x_axis_z_min, y_axis_z_min;
+    uint16_t absolute_mode_scale_to_width, absolute_mode_scale_to_height, absolute_mode_clamp_min_x, absolute_mode_clamp_max_x, absolute_mode_clamp_min_y, absolute_mode_clamp_max_y;
+    uint16_t rounding_scroll_top_height, rounding_scroll_top_width, rounding_scroll_sensitivity;
     const struct gpio_dt_spec dr;
 };
 

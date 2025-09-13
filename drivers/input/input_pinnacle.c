@@ -6,10 +6,27 @@
 #include <zephyr/pm/device.h>
 
 #include <zephyr/logging/log.h>
+#include <math.h>
+#include <stdlib.h>
 
 #include "input_pinnacle.h"
 
+// define PI if not defined
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 LOG_MODULE_REGISTER(pinnacle, CONFIG_INPUT_LOG_LEVEL);
+
+static inline int16_t scale_coordinate_x(const struct pinnacle_config *config, int16_t x) {
+    return ((x - config->absolute_mode_clamp_min_x) * config->absolute_mode_scale_to_width) /
+           (config->absolute_mode_clamp_max_x - config->absolute_mode_clamp_min_x);
+}
+
+static inline int16_t scale_coordinate_y(const struct pinnacle_config *config, int16_t y) {
+    return ((y - config->absolute_mode_clamp_min_y) * config->absolute_mode_scale_to_height) /
+           (config->absolute_mode_clamp_max_y - config->absolute_mode_clamp_min_y);
+}
 
 static int pinnacle_seq_read(const struct device *dev, const uint8_t addr, uint8_t *buf,
                              const uint8_t len) {
@@ -229,7 +246,175 @@ static int pinnacle_era_write(const struct device *dev, const uint16_t addr, uin
     return ret;
 }
 
-static void pinnacle_report_data(const struct device *dev) {
+// need CONFIG_NEWLIB_LIBC=y
+static bool pinnacle_handle_rounding_scroll(const struct device *dev, int16_t clamped_x,
+                                            int16_t clamped_y, uint8_t z) {
+    const struct pinnacle_config *config = dev->config;
+    if (!config->rounding_scroll || !config->absolute_mode) {
+        LOG_ERR("Rounding scroll disabled");
+        return false;
+    }
+
+    uint16_t central_x =
+        config->absolute_mode_clamp_min_x +
+        (config->absolute_mode_clamp_max_x - config->absolute_mode_clamp_min_x) / 2;
+    uint16_t central_y =
+        config->absolute_mode_clamp_min_y +
+        (config->absolute_mode_clamp_max_y - config->absolute_mode_clamp_min_y) / 2;
+
+    // initial detection when tapped
+    struct pinnacle_data *data = dev->data;
+    if (data->in_abs || z <= 0) {
+        data->in_rounding_scroll = false;
+        LOG_DBG("Rounding scroll deactivated");
+        return false;
+    }
+
+    int16_t dx = clamped_x - central_x;
+    int16_t dy = clamped_y - central_y;
+    dx = scale_coordinate_x(config, dx);
+    dy = scale_coordinate_y(config, dy);
+
+    if (!data->in_rounding_scroll && z > 0) {
+        uint16_t left_x = central_x - config->rounding_scroll_top_width / 2;
+        uint16_t right_x = left_x + config->rounding_scroll_top_width;
+        uint16_t top_y = config->absolute_mode_clamp_min_y;
+        uint16_t bottom_y = top_y + config->rounding_scroll_top_height;
+
+        if ((clamped_x >= left_x && clamped_x <= right_x) &&
+            (clamped_y >= top_y && clamped_y <= bottom_y)) {
+            data->in_rounding_scroll = true;
+            data->rounding_scroll_last_angle = atan2(dy, dx);
+            LOG_DBG("Rounding scroll deactivated: angle: %f", data->rounding_scroll_last_angle);
+            return true;
+        }
+
+        return false;
+    }
+
+    // if the tap center of trackpad, ignore it.
+    if (dx == 0 && dy == 0) {
+        // but keep handling the scroll.
+        return true;
+    }
+
+    // calculate angle of the tap
+    float angle = atan2(dy, dx);
+    float diff_angle = angle - data->rounding_scroll_last_angle;
+
+    if (diff_angle > M_PI) {
+        diff_angle -= 2 * M_PI;
+    } else if (diff_angle < -M_PI) {
+        diff_angle += 2 * M_PI;
+    }
+    int16_t diff_degree = (int16_t)floor(diff_angle * 180 / M_PI);
+
+    if (abs(diff_degree) >= config->rounding_scroll_sensitivity) {
+        data->rounding_scroll_last_angle = angle;
+
+        LOG_DBG("current angle: %f, diff degree: %d", angle, diff_degree);
+
+        // invert direction.
+        int16_t wheel_rel = diff_degree > 0 ? 1 : -1;
+        if (config->x_invert) {
+            wheel_rel = -wheel_rel;
+        }
+        input_report_rel(dev, INPUT_REL_WHEEL, -wheel_rel, true, K_FOREVER);
+    }
+
+    return true;
+}
+
+static void pinnacle_report_data_abs(const struct device *dev) {
+    const struct pinnacle_config *config = dev->config;
+    uint8_t packet[6];
+    int ret;
+    ret = pinnacle_seq_read(dev, PINNACLE_STATUS1, packet, 1);
+    if (ret < 0) {
+        LOG_ERR("read status: %d", ret);
+        return;
+    }
+    if (!(packet[0] & PINNACLE_STATUS1_SW_DR)) {
+        return;
+    }
+    ret = pinnacle_seq_read(dev, PINNACLE_2_2_PACKET0, packet, 6);
+    if (ret < 0) {
+        LOG_ERR("read packet: %d", ret);
+        return;
+    }
+    struct pinnacle_data *data = dev->data;
+    // TODO: Enable SW3-SW5 as well
+    uint8_t btn = packet[0] &
+                  (PINNACLE_PACKET0_BTN_PRIM | PINNACLE_PACKET0_BTN_SEC | PINNACLE_PACKET0_BTN_AUX);
+    uint8_t x_low = packet[2];
+    uint8_t y_low = packet[3];
+    uint8_t xy_high = packet[4];
+    int16_t x = ((xy_high & 0x0F) << 8) | x_low;
+    int16_t y = ((xy_high & 0xF0) << 4) | y_low;
+    int8_t z = (uint8_t)(packet[5] & 0x1F);
+
+    // handle rotate 90 to swap x/y
+    if (config->rotate_90) {
+        int16_t tmp = x;
+        x = y;
+        y = tmp;
+    }
+
+    LOG_DBG("button: %d, x: %d y: %d z: %d", btn, x, y, z);
+    if (data->in_int) {
+        LOG_DBG("Clearing status bit");
+        ret = pinnacle_clear_status(dev);
+        data->in_int = true;
+    }
+
+    if (!config->no_taps && (btn || data->btn_cache)) {
+        for (int i = 0; i < 3; i++) {
+            uint8_t btn_val = btn & BIT(i);
+            if (btn_val != (data->btn_cache & BIT(i))) {
+                input_report_key(dev, INPUT_BTN_0 + i, btn_val ? 1 : 0, false, K_FOREVER);
+            }
+        }
+    }
+
+    if (x < config->absolute_mode_clamp_min_x) {
+        x = config->absolute_mode_clamp_min_x;
+    } else if (x > config->absolute_mode_clamp_max_x) {
+        x = config->absolute_mode_clamp_max_x;
+    }
+    if (y < config->absolute_mode_clamp_min_y) {
+        y = config->absolute_mode_clamp_min_y;
+    } else if (y > config->absolute_mode_clamp_max_y) {
+        y = config->absolute_mode_clamp_max_y;
+    }
+
+    bool rounding_scroll_handled = pinnacle_handle_rounding_scroll(dev, x, y, z);
+
+    data->btn_cache = btn;
+    if (z > 0 && !rounding_scroll_handled) {
+
+        // scale to be in the configured interval
+        x = scale_coordinate_x(config, x);
+        y = scale_coordinate_y(config, y);
+        int16_t dx = x - data->absolute_mode_last_x;
+        int16_t dy = y - data->absolute_mode_last_y;
+
+        data->absolute_mode_last_x = x;
+        data->absolute_mode_last_y = y;
+
+        if (!data->in_abs) {
+            data->in_abs = true;
+            dx = 0;
+            dy = 0;
+        }
+
+        input_report_rel(dev, INPUT_REL_X, dx, false, K_FOREVER);
+        input_report_rel(dev, INPUT_REL_Y, dy, true, K_FOREVER);
+    } else if (z <= 0) {
+        data->in_abs = false;
+    }
+}
+
+static void pinnacle_report_data_rel(const struct device *dev) {
     const struct pinnacle_config *config = dev->config;
     uint8_t packet[3];
     int ret;
@@ -292,7 +477,14 @@ static void pinnacle_report_data(const struct device *dev) {
 
 static void pinnacle_work_cb(struct k_work *work) {
     struct pinnacle_data *data = CONTAINER_OF(work, struct pinnacle_data, work);
-    pinnacle_report_data(data->dev);
+    const struct device *dev = data->dev;
+    const struct pinnacle_config *config = dev->config;
+
+    if (config->absolute_mode) {
+        pinnacle_report_data_abs(dev);
+    } else {
+        pinnacle_report_data_rel(dev);
+    }
 }
 
 static void pinnacle_gpio_cb(const struct device *port, struct gpio_callback *cb, uint32_t pins) {
@@ -508,6 +700,12 @@ static int pinnacle_init(const struct device *dev) {
         return ret;
     }
     uint8_t feed_cfg1 = PINNACLE_FEED_CFG1_EN_FEED;
+    if (config->absolute_mode) {
+        feed_cfg1 |= PINNACLE_FEED_CFG1_ABS_MODE;
+        LOG_ERR("Using absolute mode");
+    } else {
+        LOG_ERR("Using relative mode");
+    }
     if (config->x_invert) {
         feed_cfg1 |= PINNACLE_FEED_CFG1_INV_X;
     }
@@ -576,6 +774,29 @@ static int pinnacle_pm_action(const struct device *dev, enum pm_device_action ac
         .sleep_en = DT_INST_PROP(n, sleep),                                                        \
         .no_taps = DT_INST_PROP(n, no_taps),                                                       \
         .no_secondary_tap = DT_INST_PROP(n, no_secondary_tap),                                     \
+        .absolute_mode = DT_INST_PROP(n, absolute_mode),                                           \
+        .absolute_mode_scale_to_width = COND_CODE_1(                                               \
+            DT_INST_PROP(n, rotate_90), (DT_INST_PROP(n, absolute_mode_scale_to_height)),          \
+            (DT_INST_PROP(n, absolute_mode_scale_to_width))),                                      \
+        .absolute_mode_scale_to_height = COND_CODE_1(                                              \
+            DT_INST_PROP(n, rotate_90), (DT_INST_PROP(n, absolute_mode_scale_to_width)),           \
+            (DT_INST_PROP(n, absolute_mode_scale_to_height))),                                     \
+        .absolute_mode_clamp_min_x =                                                               \
+            COND_CODE_1(DT_INST_PROP(n, rotate_90), (DT_INST_PROP(n, absolute_mode_clamp_min_y)),  \
+                        (DT_INST_PROP(n, absolute_mode_clamp_min_x))),                             \
+        .absolute_mode_clamp_max_x =                                                               \
+            COND_CODE_1(DT_INST_PROP(n, rotate_90), (DT_INST_PROP(n, absolute_mode_clamp_max_y)),  \
+                        (DT_INST_PROP(n, absolute_mode_clamp_max_x))),                             \
+        .absolute_mode_clamp_min_y =                                                               \
+            COND_CODE_1(DT_INST_PROP(n, rotate_90), (DT_INST_PROP(n, absolute_mode_clamp_min_x)),  \
+                        (DT_INST_PROP(n, absolute_mode_clamp_min_y))),                             \
+        .absolute_mode_clamp_max_y =                                                               \
+            COND_CODE_1(DT_INST_PROP(n, rotate_90), (DT_INST_PROP(n, absolute_mode_clamp_max_x)),  \
+                        (DT_INST_PROP(n, absolute_mode_clamp_max_y))),                             \
+        .rounding_scroll = DT_INST_PROP(n, rounding_scroll),                                       \
+        .rounding_scroll_top_height = DT_INST_PROP(n, rounding_scroll_top_height),                 \
+        .rounding_scroll_top_width = DT_INST_PROP(n, rounding_scroll_top_width),                   \
+        .rounding_scroll_sensitivity = DT_INST_PROP(n, rounding_scroll_sensitivity),               \
         .x_axis_z_min = DT_INST_PROP_OR(n, x_axis_z_min, 5),                                       \
         .y_axis_z_min = DT_INST_PROP_OR(n, y_axis_z_min, 4),                                       \
         .sensitivity = DT_INST_ENUM_IDX_OR(n, sensitivity, PINNACLE_SENSITIVITY_1X),               \
