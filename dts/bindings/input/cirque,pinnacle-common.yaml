@@ -69,7 +69,7 @@ properties:
     description: |
       Enable acceleration of cursor movement with velocity-besed acceleration.
       We recommend to set lower value to ZMK_POINTING_DEFAULT_MOVE_VAL when using this option.
-  rounding-scroll-detection-width:
+  rounding-scroll-detection-edge:
     type: int
     default: 24
     description: Edge size of the rounding scroll detection
