@@ -272,15 +272,13 @@ static bool pinnacle_handle_rounding_scroll(const struct device *dev, int16_t cl
 
     int16_t dx = clamped_x - central_x;
     int16_t dy = clamped_y - central_y;
-    dx = scale_coordinate_x(config, dx);
-    dy = scale_coordinate_y(config, dy);
 
     if (!data->in_rounding_scroll && z > 0) {
       // calculate length of touched point from central of touch pad.
-      uint16_t r = 512 - sqrt(dx * dx + dy * dy);
+      uint16_t edge_width = 512 - sqrt(dx * dx + dy * dy);
 
       // when the finger is near the edge, start rounding scroll mode.
-      if (r < config->rounding_scroll_detection_edge) {
+      if (edge_width < config->rounding_scroll_detection_edge) {
             data->in_rounding_scroll = true;
             data->rounding_scroll_last_angle = atan2(dy, dx);
             LOG_DBG("Rounding scroll deactivated: angle: %f", data->rounding_scroll_last_angle);

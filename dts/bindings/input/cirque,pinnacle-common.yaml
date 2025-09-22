@@ -71,7 +71,7 @@ properties:
       We recommend to set lower value to ZMK_POINTING_DEFAULT_MOVE_VAL when using this option.
   rounding-scroll-detection-edge:
     type: int
-    default: 24
+    default: 102
     description: Edge size of the rounding scroll detection
   rounding-scroll-sensitivity:
     type: int
